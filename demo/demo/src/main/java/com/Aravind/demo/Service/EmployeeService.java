@@ -6,7 +6,8 @@ import com.Aravind.demo.entity.Employee;
 
 import com.Aravind.demo.entity.JobPosting;
 import com.Aravind.demo.entity.Resume;
-import org.springframework.boot.autoconfigure.batch.BatchProperties;
+import jakarta.mail.MessagingException;
+
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -22,7 +23,7 @@ public interface EmployeeService {
      * @return The saved Employee object.
      * @throws BusinessServiceException If there is any error during the employee registration process.
      */
-    void saveEmployees(Employee employee) throws BusinessServiceException;
+    void registerEmployee(Employee employee) throws BusinessServiceException, MessagingException;
 
     /**
      * Retrieves the employee's ID based on their email and password.
@@ -54,6 +55,8 @@ public interface EmployeeService {
      */
     String getNameByEmailAndPassword(String email,String password) throws BusinessServiceException;
 
+
+    Map<String, Object> login(String email, String password) throws BusinessServiceException;
     /**
      * Updates the password of an employee based on the provided email.
      *
@@ -179,7 +182,8 @@ public interface EmployeeService {
      */
     Applications updatApplication(Long id, Applications applications) throws BusinessServiceException;
 
-
+    void shortlistApplication(Long jobPostingId, Long jobSeekerId, Long applicationId)
+            throws BusinessServiceException, MessagingException;
     Applications getStatusByApplicationId(Long applicationId) throws BusinessServiceException;
 
     /**

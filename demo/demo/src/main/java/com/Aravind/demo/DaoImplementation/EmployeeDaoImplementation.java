@@ -3,10 +3,20 @@ package com.Aravind.demo.DaoImplementation;
 import com.Aravind.demo.Dao.EmployeeDao;
 import com.Aravind.demo.Exception.DataServiceException;
 import com.Aravind.demo.Quries.EmployeeQuries;
-import com.Aravind.demo.entity.*;
+import com.Aravind.demo.entity.Resume;
+import com.Aravind.demo.entity.Applications;
+import com.Aravind.demo.entity.JobPosting;
+import com.Aravind.demo.entity.Employee;
 import jakarta.persistence.EntityNotFoundException;
 import jakarta.persistence.NoResultException;
-import org.hibernate.*;
+
+import org.hibernate.Session;
+import org.hibernate.SessionFactory;
+import org.hibernate.Transaction;
+import org.hibernate.query.Query;
+
+import org.hibernate.HibernateException;
+import org.hibernate.NonUniqueResultException;
 import org.hibernate.query.Query;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -33,18 +43,18 @@ public class EmployeeDaoImplementation implements EmployeeDao {
     public void saveEmployees(Employee employee) throws DataServiceException {
         Session session = null;
         try {
-            session = sessionFactory.openSession(); // Open a session
-            session.beginTransaction(); // Start the transaction
-            session.save(employee); // Save the employee entity
-            session.getTransaction().commit(); // Commit the transaction
+            session = sessionFactory.openSession();
+            session.beginTransaction();
+            session.save(employee);
+            session.getTransaction().commit();
         } catch (HibernateException e) {
             if (session != null && session.getTransaction() != null) {
-                session.getTransaction().rollback(); // Rollback the transaction in case of error
+                session.getTransaction().rollback();
             }
             throw new DataServiceException("Error saving employee: " + employee.getId(), e); // Throw custom exception with the error message
         } finally {
             if (session != null) {
-                session.close(); // Ensure session is closed
+                session.close();
             }
         }
 
@@ -62,7 +72,7 @@ public class EmployeeDaoImplementation implements EmployeeDao {
     public String getRoleByEmailAndPassword(String email, String password) throws DataServiceException {
         Session session = null;
         try {
-            session = sessionFactory.openSession(); // Open session
+            session = sessionFactory.openSession();
             Query<String> query = session.createQuery(EmployeeQuries.getRoleByEmailAndPassword, String.class);
             query.setParameter("email", email);
             query.setParameter("password", password);
@@ -76,7 +86,7 @@ public class EmployeeDaoImplementation implements EmployeeDao {
             throw new DataServiceException("Error executing query for employee role", e);
         } finally {
             if (session != null) {
-                session.close(); // Ensure session is closed
+                session.close();
             }
         }
     }
@@ -94,7 +104,7 @@ public class EmployeeDaoImplementation implements EmployeeDao {
     public Long getIdByEmailAndPassword(String email, String password) throws DataServiceException {
         Session session = null;
         try {
-            session = sessionFactory.openSession(); // Open session
+            session = sessionFactory.openSession();
             Query<Long> query = session.createQuery(EmployeeQuries.getIdByEmailAndPassword, Long.class);
             query.setParameter("email", email);
             query.setParameter("password", password);
@@ -111,7 +121,7 @@ public class EmployeeDaoImplementation implements EmployeeDao {
             throw new DataServiceException("Error executing query to retrieve employee ID", e);
         } finally {
             if (session != null) {
-                session.close(); // Ensure session is closed
+                session.close();
             }
         }
     }
@@ -128,7 +138,7 @@ public class EmployeeDaoImplementation implements EmployeeDao {
     public String getNameByEmailAndPassword(String email, String password) throws DataServiceException {
         Session session = null;
         try {
-            session = sessionFactory.openSession(); // Open session
+            session = sessionFactory.openSession();
             Query<String> query = session.createQuery(EmployeeQuries.getFullNameByEmailAndPassowrd, String.class);
             query.setParameter("email", email);
             query.setParameter("password", password);
@@ -145,7 +155,7 @@ public class EmployeeDaoImplementation implements EmployeeDao {
             throw new DataServiceException("Error executing query to retrieve employee full name", e);
         } finally {
             if (session != null) {
-                session.close(); // Ensure session is closed
+                session.close();
             }
         }
     }
@@ -170,24 +180,22 @@ public class EmployeeDaoImplementation implements EmployeeDao {
             query.setParameter("password", password);  // Use plain password, it will be hashed before storing
             query.setParameter("email", email);
 
-            // Execute the update
             int result = query.executeUpdate();
 
-            // If the update was successful, commit the transaction
             if (result > 0) {
                 transaction.commit();
-                return true; // Password updated successfully
+                return true;
             } else {
-                return false; // No matching email found, so password was not updated
+                return false;
             }
         } catch (HibernateException e) {
-            // In case of a Hibernate error, rollback the transaction and handle it
+
             if (transaction != null) {
                 transaction.rollback();
             }
             throw new DataServiceException("Error updating password for email: " + email, e); // Wrap in a custom exception
         }  finally {
-            // Close the session to release resources
+
             session.close();
         }
     }
@@ -208,7 +216,7 @@ public class EmployeeDaoImplementation implements EmployeeDao {
             Long count = query.uniqueResult();
             return count > 0;
         } catch (HibernateException e) {
-            // Log the exception if needed
+
             throw new DataServiceException("Error checking if email exists: " + email, e);  // Wrap Hibernate exception in a custom DataServiceException
         } finally {
             session.close(); // Ensure session is closed
@@ -229,34 +237,34 @@ public class EmployeeDaoImplementation implements EmployeeDao {
      */
     @Override
     public Employee getEmployeeeById(Long id) throws DataServiceException {
-        Session session = sessionFactory.openSession(); // Open a new session
+        Session session = sessionFactory.openSession();
         Transaction transaction = null;
         Employee employee = null;
 
         try {
             transaction = session.beginTransaction();
-            employee = session.get(Employee.class, id);  // Fetch Employee by ID
+            employee = session.get(Employee.class, id);
 
             if (employee == null) {
                 throw new EntityNotFoundException("Employee with id " + id + " not found.");
             }
 
-            transaction.commit();  // Commit the transaction
+            transaction.commit();
         } catch (HibernateException e) {
-            // Rollback in case of an error
+
             if (transaction != null) {
                 transaction.rollback();
             }
-            // Wrap HibernateException in a custom exception
+
             throw new DataServiceException("Error fetching Employee with id " + id, e);
         } catch (EntityNotFoundException e) {
-            // Handle specific case of entity not found
-            throw e;  // Rethrow the EntityNotFoundException as it’s a valid case
+
+            throw e;
         } finally {
-            session.close();  // Ensure the session is closed to release resources
+            session.close();
         }
 
-        return employee;  // Return the fetched Employee object
+        return employee;
     }
 
 
@@ -270,19 +278,19 @@ public class EmployeeDaoImplementation implements EmployeeDao {
     @Override
     public void saveJobPostings(JobPosting jobposting) throws DataServiceException {
         Session session = sessionFactory.openSession();  // Open a new session
-        Transaction transaction = null;  // Initialize the transaction
+        Transaction transaction = null;
 
         try {
             transaction = session.beginTransaction();  // Start the transaction
-            session.save(jobposting);  // Save the job posting
-            transaction.commit();  // Commit the transaction
+            session.save(jobposting);
+            transaction.commit();
 
         } catch (HibernateException e) {
-            // Rollback the transaction in case of an error
+
             if (transaction != null) {
                 transaction.rollback();
             }
-            // Wrap the HibernateException in a custom DataServiceException
+
             throw new DataServiceException("Error saving job posting", e);
         } finally {
             session.close();  // Ensure session is closed to release resources
@@ -303,11 +311,11 @@ public class EmployeeDaoImplementation implements EmployeeDao {
         try (Session session = sessionFactory.openSession()) {
             session.beginTransaction();
 
-            // Query to fetch total count of job postings
+
             Query<Long> countQuery = session.createQuery("SELECT COUNT(j) FROM JobPosting j", Long.class);
             long totalCount = countQuery.getSingleResult();
 
-            // Query to fetch paginated job postings
+
             Query<JobPosting> query = session.createQuery(EmployeeQuries.getallJobPostings, JobPosting.class);
             query.setFirstResult((page - 1) * size); // Calculate offset
             query.setMaxResults(size);              // Set max results
@@ -315,7 +323,7 @@ public class EmployeeDaoImplementation implements EmployeeDao {
 
             session.getTransaction().commit();
 
-            // Prepare the response map
+
             Map<String, Object> response = new HashMap<>();
             response.put("data", paginatedJobPostings);
             response.put("totalCount", totalCount);
@@ -337,8 +345,8 @@ public class EmployeeDaoImplementation implements EmployeeDao {
 
     @Override
     public Employee updateEmployee(Long id, Employee updatedEmployee) throws DataServiceException {
-        Session session = sessionFactory.openSession(); // Open a new session
-        Transaction transaction = null; // To manage the transaction
+        Session session = sessionFactory.openSession();
+        Transaction transaction = null;
         Employee updatedEntity = null;
 
         try {
@@ -351,34 +359,35 @@ public class EmployeeDaoImplementation implements EmployeeDao {
             query.setParameter("fullName", updatedEmployee.getFullName());
             query.setParameter("email", updatedEmployee.getOfficialEmail());
             query.setParameter("mobileNumber", updatedEmployee.getMobileNumber());
+            query.setParameter("profilePhoto", updatedEmployee.getProfilePhoto());
             query.setParameter("designation", updatedEmployee.getDesignation());
             query.setParameter("password", updatedEmployee.getPassword()); // Ensure password is hashed if necessary
             query.setParameter("role", updatedEmployee.getRole());
             query.setParameter("id", id);
 
-            // Execute the update
+
             int result = query.executeUpdate();
 
             if (result > 0) {
-                transaction.commit(); // Commit the transaction if the update is successful
-                // Fetch the updated Employee object
+                transaction.commit();
+
                 updatedEntity = session.get(Employee.class, id);
             } else {
                 throw new EntityNotFoundException("Employee with id " + id + " not found.");
             }
         } catch (HibernateException e) {
             if (transaction != null) {
-                transaction.rollback(); // Rollback in case of an error
+                transaction.rollback();
             }
             throw new DataServiceException("Error updating Employee with id " + id, e); // Wrap HibernateException into a custom DataServiceException
         } catch (EntityNotFoundException e) {
-            // Handle the case where the entity is not found
+
             throw new DataServiceException("Employee with id " + id + " not found for update", e); // Wrap EntityNotFoundException into a custom DataServiceException
         } finally {
-            session.close(); // Close the session
+            session.close();
         }
 
-        return updatedEntity; // Return the updated Employee object
+        return updatedEntity;
     }
 
     /**
@@ -398,30 +407,30 @@ public class EmployeeDaoImplementation implements EmployeeDao {
         Session session = sessionFactory.openSession();
 
         try {
-            // Begin a transaction
+
             session.beginTransaction();
 
-            // HQL query to fetch job postings where jobSeekerId matches
+
             Query<JobPosting> query = session.createQuery(EmployeeQuries.getallJobPostingsByJobseekerid, JobPosting.class);
             query.setParameter("jobSeekerId", jobSeekerId);
 
-            // Execute the query and get the results
+
             List<JobPosting> jobPostingsList = query.getResultList();
 
-            // Commit the transaction
+
             session.getTransaction().commit();
 
-            // Return the results
+
             return jobPostingsList;
         } catch (HibernateException e) {
-            // Rollback the transaction in case of an error
+
             if (session.getTransaction() != null) {
                 session.getTransaction().rollback();
             }
-            // Wrap the HibernateException in a custom exception
+
             throw new DataServiceException("Error fetching job postings for job seeker ID: " + jobSeekerId, e);
         }  finally {
-            // Close the session to release resources
+
             session.close();
         }
     }
@@ -435,37 +444,37 @@ public class EmployeeDaoImplementation implements EmployeeDao {
      */
     @Override
     public Long getApplicantCount(Long jobPostingId) throws DataServiceException {
-        // Open a new session
+
         Session session = sessionFactory.openSession();
 
         try {
-            // Begin transaction (though not strictly necessary for read-only operations)
+
             session.beginTransaction();
 
-            // HQL query to count distinct job seekers who applied for a particular job posting
+
             Query<Long> query = session.createQuery(EmployeeQuries.getcountApplications, Long.class);
 
-            // Set the parameter for the job posting ID
+
             query.setParameter("jobPostingId", jobPostingId);
 
-            // Execute the query and get the count result
+
             Long applicantCount = query.uniqueResult();
 
-            // Commit the transaction (again, for read-only it may not be needed, but it's good practice)
+
             session.getTransaction().commit();
 
-            // Return the count of applicants
+
             return applicantCount;
 
         } catch (HibernateException e) {
-            // Rollback the transaction in case of any error
+
             if (session.getTransaction() != null) {
                 session.getTransaction().rollback();
             }
-            // Wrap HibernateException into a custom DataServiceException and throw it
+
             throw new DataServiceException("Error retrieving applicant count for job posting ID: " + jobPostingId, e);
         } finally {
-            // Close the session to release resources
+
             session.close();
         }
     }
@@ -480,37 +489,36 @@ public class EmployeeDaoImplementation implements EmployeeDao {
      */
     @Override
     public List<Resume> findResumesByJobPostingId(Long jobPostingId) throws DataServiceException {
-        Session session = sessionFactory.openSession();  // Open a new session
-        List<Resume> resumes = Collections.emptyList();  // Default empty list
+        Session session = sessionFactory.openSession();
+        List<Resume> resumes = Collections.emptyList();
 
         try {
-            // Begin transaction (though not strictly necessary for read-only operations)
+
             session.beginTransaction();
 
-            // HQL query to fetch the resumes associated with a particular job posting
+
             Query<Resume> query = session.createQuery(EmployeeQuries.findresumebyjobjobpostingid, Resume.class);
 
-            // Set the parameter for the job posting ID
+
             query.setParameter("jobPostingId", jobPostingId);
 
-            // Execute the query and get the result list (Resumes)
             resumes = query.getResultList();
 
-            // Commit the transaction (again, for read-only it may not be needed, but it's good practice)
+
             session.getTransaction().commit();
 
         } catch (HibernateException e) {
-            // Rollback the transaction in case of any error
+
             if (session.getTransaction() != null) {
                 session.getTransaction().rollback();
             }
             throw new DataServiceException("Error while fetching resumes for JobPosting ID: " + jobPostingId, e);
         } finally {
-            // Close the session to release resources
+
             session.close();
         }
 
-        return resumes;  // Return the list of resumes (empty if no results or error occurred)
+        return resumes;
     }
 
     /**
@@ -529,23 +537,23 @@ public class EmployeeDaoImplementation implements EmployeeDao {
         try {
             transaction = session.beginTransaction();
 
-            // Fetch the applications associated with the job posting ID
+
             applications = session.createQuery(EmployeeQuries.getApplicationById, Applications.class)
                     .setParameter("jobPostingId", jobPostingId)
                     .getResultList();
 
-            transaction.commit();  // Commit the transaction if successful
+            transaction.commit();
         } catch (HibernateException e) {
-            // Rollback transaction in case of error
+
             if (transaction != null) {
                 transaction.rollback();
             }
             throw new DataServiceException("Error fetching applications for Job Posting with ID: " + jobPostingId, e);
         } finally {
-            session.close();  // Ensure session is closed to release resources
+            session.close();
         }
 
-        return applications;  // Return the list of applications
+        return applications;
     }
 
 
@@ -560,14 +568,14 @@ public class EmployeeDaoImplementation implements EmployeeDao {
      */
     @Override
     public Applications updatApplication(Long id, Applications updatedApplication) throws DataServiceException {
-        Session session = sessionFactory.openSession(); // Open a new session
-        Transaction transaction = null; // To manage the transaction
+        Session session = sessionFactory.openSession();
+        Transaction transaction = null;
         Applications updatedEntity = null;
 
         try {
             transaction = session.beginTransaction();
 
-            // Update the query to filter by applicationId
+
             Query query = session.createQuery(EmployeeQuries.UpdateApplication);
             query.setParameter("jobPosting", updatedApplication.getJobPosting());
             query.setParameter("jobSeeker", updatedApplication.getJobSeeker());
@@ -575,30 +583,30 @@ public class EmployeeDaoImplementation implements EmployeeDao {
             query.setParameter("status", updatedApplication.getStatus());
             query.setParameter("applicationId", id); // Use applicationId as the filter
 
-            // Execute the update
+
             int result = query.executeUpdate();
 
             if (result > 0) {
-                transaction.commit(); // Commit the transaction if the update is successful
-                // Fetch the updated Application object
+                transaction.commit();
+
                 updatedEntity = session.get(Applications.class, id);
             } else {
                 throw new EntityNotFoundException("Application with applicationId " + id + " not found.");
             }
         } catch (HibernateException e) {
-            // Rollback in case of an error
+
             if (transaction != null) {
                 transaction.rollback();
             }
             throw new DataServiceException("Error updating Application with id " + id, e); // Wrap HibernateException into a DataServiceException
         } catch (EntityNotFoundException e) {
-            // Handle the specific case where the entity is not found
+
             throw new DataServiceException("Application with id " + id + " not found for update", e); // Wrap EntityNotFoundException into a DataServiceException
         } finally {
-            session.close(); // Close the session
+            session.close();
         }
 
-        return updatedEntity; // Return the updated Application object
+        return updatedEntity;
     }
 
     @Override
@@ -617,17 +625,17 @@ public class EmployeeDaoImplementation implements EmployeeDao {
 
             transaction.commit();  // Commit the transaction
         } catch (HibernateException e) {
-            // Rollback in case of an error
+
             if (transaction != null) {
                 transaction.rollback();
             }
-            // Wrap HibernateException in a custom exception
+
             throw new DataServiceException("Error fetching Employee with id " + applicationId, e);
         } catch (EntityNotFoundException e) {
-            // Handle specific case of entity not found
-            throw e;  // Rethrow the EntityNotFoundException as it’s a valid case
+
+            throw e;
         } finally {
-            session.close();  // Ensure the session is closed to release resources
+            session.close();
         }
 
         return applications;
@@ -645,15 +653,15 @@ public class EmployeeDaoImplementation implements EmployeeDao {
         Session session = sessionFactory.openSession();
 
         try {
-            // Begin transaction
+
             session.beginTransaction();
 
-            // Delete dependent applications first
+
             Query<?> deleteApplicationsQuery = session.createQuery(EmployeeQuries.DleteapplicationId);
             deleteApplicationsQuery.setParameter("jobPostingId", jobPostingId);
             deleteApplicationsQuery.executeUpdate();
 
-            // Delete the job posting
+
             Query<?> deleteJobPostingQuery = session.createQuery(EmployeeQuries.DeleteJobposting);
             deleteJobPostingQuery.setParameter("jobPostingId", jobPostingId);
             int result = deleteJobPostingQuery.executeUpdate();
@@ -662,16 +670,16 @@ public class EmployeeDaoImplementation implements EmployeeDao {
                 throw new EntityNotFoundException("JobPosting with ID " + jobPostingId + " not found.");
             }
 
-            // Commit the transaction
+
             session.getTransaction().commit();
         } catch (HibernateException e) {
-            // Rollback transaction in case of error
+
             if (session.getTransaction() != null) {
                 session.getTransaction().rollback();
             }
             throw new DataServiceException("Error deleting JobPosting with ID: " + jobPostingId, e);
         } finally {
-            // Close the session
+
             session.close();
         }
     }

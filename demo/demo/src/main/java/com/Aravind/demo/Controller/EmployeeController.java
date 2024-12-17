@@ -1,30 +1,42 @@
 package com.Aravind.demo.Controller;
 
 import com.Aravind.demo.Constants.EmployeeURLConstants;
-import com.Aravind.demo.Constants.JobSeekerURLConstant;
 import com.Aravind.demo.Exception.BusinessServiceException;
 import com.Aravind.demo.Service.EmailService;
 import com.Aravind.demo.Service.EmployeeService;
 import com.Aravind.demo.Service.JobService;
-import com.Aravind.demo.entity.*;
+import com.Aravind.demo.entity.Employee;
+import com.Aravind.demo.entity.JobPosting;
+
+import com.Aravind.demo.entity.Resume;
+import com.Aravind.demo.entity.Applications;
+import jakarta.mail.MessagingException;
 import jakarta.persistence.EntityNotFoundException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.transaction.support.AbstractPlatformTransactionManager;
-import org.springframework.web.bind.annotation.*;
-import org.springframework.web.server.ResponseStatusException;
 
-import javax.swing.plaf.ViewportUI;
+import org.springframework.web.bind.annotation.CrossOrigin;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.PathVariable;
+
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
-@CrossOrigin(origins = "http://localhost:4200")
+@CrossOrigin(origins = EmployeeURLConstants.FRONTEND_URL)
 @RestController
-@RequestMapping("/api")
+@RequestMapping(EmployeeURLConstants.BASE_API_URL)
 public class EmployeeController {
     private static final Logger logger = LoggerFactory.getLogger(EmployeeController.class);
 
@@ -46,14 +58,13 @@ public class EmployeeController {
      * @throws BusinessServiceException If there is any error during the employee registration process.
      */
     @PostMapping(EmployeeURLConstants.EMPLOYEE_REGISTER)
-    public Employee AddEmployees(@RequestBody Employee employee) throws BusinessServiceException {
-        empService.saveEmployees(employee);
-        logger.info(employee.getFullName()+"Employee registered successfully");
-        emailService.sendEmail(employee.getOfficialEmail(),
-                "Welcome to RevHire!"+employee.getFullName(),
-                "Thank you for registering with RevHire!");// Save the JobSeeker entity using saveEmployees
+    public Employee addEmployee(@RequestBody Employee employee) throws BusinessServiceException, MessagingException {
+        empService.registerEmployee(employee);
+        logger.info(employee.getFullName() + " Employee registered successfully");
+
         return employee;
     }
+
 
 
     /**
@@ -68,25 +79,17 @@ public class EmployeeController {
 
     @PostMapping(EmployeeURLConstants.EMPLOYEE_LOGIN)
     public ResponseEntity<Map<String, Object>> login(@RequestBody Map<String, String> loginRequest) throws BusinessServiceException {
-        String email = loginRequest.get("email");
-        String password = loginRequest.get("password");
-
-        // Assuming you have a method to retrieve the user's role and ID
-        String role = empService.getRoleByEmailAndPassword(email, password);
-        Long id = empService.getIdByEmailAndPassword(email, password);
-        String fullName = empService.getNameByEmailAndPassword(email,password);
-        logger.info(fullName+"logged in successfully");
-        if (role != null && id != null) {
-            Map<String, Object> response = new HashMap<>();
-            response.put("role", role);
-            response.put("id", id);
-            response.put("fullName",fullName);
+        try {
+            // Delegate the login operation to the service
+            Map<String, Object> response = empService.login(loginRequest.get("email"), loginRequest.get("password"));
+            logger.info(response.get("fullName") + " logged in successfully");
             return ResponseEntity.ok(response);
-        } else {
+        } catch (BusinessServiceException e) {
+            logger.error("Login failed: " + e.getMessage());
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(null);
         }
-
     }
+
 
     /**
      * Endpoint to update the password of an employee.
@@ -100,9 +103,9 @@ public class EmployeeController {
         String email = passwordUpdateRequest.get("email");
         String newPassword = passwordUpdateRequest.get("password");
 
-        // Call service to update the password
+
         boolean isUpdated = empService.updateEmployeePassword(email, newPassword);
-        logger.info("Password updated successfully");
+        logger.info("Password updated successfully" +isUpdated);
         Map<String, Object> response = new HashMap<>();
         if (isUpdated) {
             response.put("message", "Password updated successfully");
@@ -143,18 +146,18 @@ public class EmployeeController {
      */
 
     @PostMapping(EmployeeURLConstants.EMPLOYEE_JOBPOSTINGS)
-    public ResponseEntity<JobPosting> addJobPosting(@PathVariable("id") Long id, @RequestBody JobPosting jobPosting) throws BusinessServiceException{
-        // Fetch the Employee by ID using the service
-        Employee employee = empService.getEmployeeeById(id);
-            logger.info(employee.getFullName()+" JobPosted Successfully");
-        if (employee != null) {
+    public ResponseEntity<JobPosting> addJobPosting(@PathVariable("id") Long id, @RequestBody JobPosting jobPosting) throws BusinessServiceException {
+
+        Optional<Employee> optionalEmployee = Optional.ofNullable(empService.getEmployeeeById(id));
+
+        return optionalEmployee.map(employee -> {
+            logger.info(employee.getFullName() + " JobPosted Successfully");
             jobPosting.setEmployee(employee);
-            empService.saveJobPostings(jobPosting); // Save the job posting
-            return ResponseEntity.ok(jobPosting); // Return 200 OK with job posting
-        } else {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                    .body(null); // Return 404 NOT_FOUND if employee not found
-        }
+            empService.saveJobPostings(jobPosting);
+            return ResponseEntity.ok(jobPosting);
+        }).orElseGet(() ->
+                ResponseEntity.status(HttpStatus.NOT_FOUND).body(null)
+        );
     }
 
     /**
@@ -193,15 +196,15 @@ public class EmployeeController {
 
 
     @GetMapping(EmployeeURLConstants.EMPLOYEE_VIEWPROFILE)
-    public ResponseEntity<Employee> getEmployeeProfile(@PathVariable Long id) throws BusinessServiceException  {
-        Employee employee = empService.getEmployeeeById(id);
+    public ResponseEntity<Employee> getEmployeeProfile(@PathVariable Long id) throws BusinessServiceException {
+        Optional<Employee> employeeOptional = Optional.ofNullable(empService.getEmployeeeById(id));
         logger.info("Fetching the Employee Profile");
-        if (employee != null) {
-            return ResponseEntity.ok(employee);
-        } else {
-            return ResponseEntity.notFound().build(); // Return 404 if not found
-        }
+
+        return employeeOptional
+                .map(employee -> ResponseEntity.ok(employee))
+                .orElseGet(() -> ResponseEntity.notFound().build());
     }
+
 
     /**
      * Updates the details of an existing employee in the system.
@@ -224,11 +227,11 @@ public class EmployeeController {
         try {
             Employee employee = empService.updateEmployee(id, updatedEmployee);
             logger.info(employee.getFullName()+"updated Successfully");
-            return ResponseEntity.ok(employee); // Return the updated JobSeeker object
+            return ResponseEntity.ok(employee);
         } catch (EntityNotFoundException ex) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(null); // Return 404 if not found
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(null);
         } catch (Exception ex) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(null); // Return 500 for other errors
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(null);
         }
     }
 
@@ -274,13 +277,14 @@ public class EmployeeController {
 
     @GetMapping(EmployeeURLConstants.EMPLOYEE_RESUMEDEATILS)
     public ResponseEntity<List<Resume>> getResumesByJobPostingId(@PathVariable Long jobPostingId) throws BusinessServiceException {
-        List<Resume> resumes = empService.findResumesByJobPostingId(jobPostingId);  // Updated service method
-        if (resumes != null && !resumes.isEmpty()) {
-            return ResponseEntity.ok(resumes);
-        } else {
-            return ResponseEntity.notFound().build();  // Return 404 if no resumes found
-        }
+        Optional<List<Resume>> resumesOptional = Optional.ofNullable(empService.findResumesByJobPostingId(jobPostingId));  // Wrap list in Optional
+
+        return resumesOptional
+                .filter(resumes -> !resumes.isEmpty())
+                .map(resumes -> ResponseEntity.ok(resumes))
+                .orElseGet(() -> ResponseEntity.notFound().build());
     }
+
 
 
     /**
@@ -297,7 +301,7 @@ public class EmployeeController {
         if (!applications.isEmpty()) {
             return ResponseEntity.ok(applications);
         } else {
-            return ResponseEntity.noContent().build(); // Returns 204 No Content if no applications are found
+            return ResponseEntity.noContent().build();
         }
 
     }
@@ -318,42 +322,38 @@ public class EmployeeController {
             @RequestBody Applications applications) throws BusinessServiceException{
         Applications application = empService.updatApplication(id, applications);
         logger.info("Application is Updated successfully");
-        return ResponseEntity.ok(application); // Return the updated application
+        return ResponseEntity.ok(application);
     }
+
+    /**
+     *
+     * Creates a job application and sends an email notification to the job seeker upon being shortlisted.
+     *
+     * @param jobPostingId  The ID of the job posting for which the job seeker is being shortlisted.
+     * @param jobSeekerId   The ID of the job seeker who is being shortlisted.
+     * @param applicationId (Optional) The ID of the application to retrieve its status.
+     * @return              ResponseEntity containing a success message or an error message.
+     * @throws BusinessServiceException If any business logic-related exception occurs.
+
+     */
 
     @PostMapping(EmployeeURLConstants.SHORTLISTED)
     public ResponseEntity<?> createApplication(
             @PathVariable("jobPostingId") Long jobPostingId,
             @PathVariable("jobSeekerId") Long jobSeekerId,
             @PathVariable(value = "applicationId", required = false) Long applicationId
-    ) {
+    ) throws BusinessServiceException {
         try {
-            JobSeeker jobSeeker = jobService.getJobSeekerById(jobSeekerId);
-            JobPosting jobPosting = jobService.getJobPostingById(jobPostingId);
-            Applications applications = empService.getStatusByApplicationId(applicationId);
+
+            empService.shortlistApplication(jobPostingId, jobSeekerId, applicationId);
+
             logger.info("Email Sent Successfully");
-            // Optional application ID handling
-          /*  Applications application = null;
-            if (applicationId != null) {
-                application = (Applications) empService.getApplicationById(applicationId);
-            }*/
-
-            // Construct the email body based on status
-            String emailBody = applications != null
-                    ? "Thank you Your application status is: " + applications.getStatus()
-                    : "Thank you for registering with RevHire!";
-
-            emailService.sendEmail(
-                    jobSeeker.getEmail(),
-                    "Welcome to RevHire! " + jobPosting.getCompanyName(),
-                    emailBody
-            );
-
-            return ResponseEntity.ok("Application created and email sent successfully.");
+            return ResponseEntity.ok("Application status updated and email sent successfully.");
         } catch (Exception e) {
-            return ResponseEntity.status(500).body("Error creating application: " + e.getMessage());
+            return ResponseEntity.status(500).body("Error updating application status and sending email: " + e.getMessage());
         }
     }
+
 
 
     /**
@@ -372,7 +372,7 @@ public class EmployeeController {
     public ResponseEntity<Void> deleteJobPosting(@PathVariable("id") Long jobPostingId)  throws BusinessServiceException{
         empService.deleteJobPostingById(jobPostingId);
         logger.info("Jobposting deleted successfully ");
-        return ResponseEntity.noContent().build(); // HTTP 204
+        return ResponseEntity.noContent().build();
     }
 
 

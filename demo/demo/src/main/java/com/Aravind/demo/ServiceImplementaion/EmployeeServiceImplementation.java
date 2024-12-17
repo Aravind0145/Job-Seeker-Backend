@@ -3,22 +3,34 @@ package com.Aravind.demo.ServiceImplementaion;
 import com.Aravind.demo.Dao.EmployeeDao;
 import com.Aravind.demo.Exception.BusinessServiceException;
 import com.Aravind.demo.Exception.DataServiceException;
+import com.Aravind.demo.Message.MessageHandle;
+import com.Aravind.demo.Service.EmailService;
 import com.Aravind.demo.Service.EmployeeService;
+import com.Aravind.demo.Service.JobService;
 import com.Aravind.demo.entity.Applications;
 import com.Aravind.demo.entity.Employee;
+import com.Aravind.demo.entity.JobSeeker;
 import com.Aravind.demo.entity.JobPosting;
 import com.Aravind.demo.entity.Resume;
+import jakarta.mail.MessagingException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import javax.xml.crypto.Data;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 @Service
 public class EmployeeServiceImplementation implements EmployeeService {
 
     private final EmployeeDao employeeDAO;
+
+    @Autowired
+    private EmailService emailService;
+    @Autowired
+    private JobService jobService;
 
     @Autowired
     public EmployeeServiceImplementation(EmployeeDao employeeDAO) {
@@ -27,14 +39,20 @@ public class EmployeeServiceImplementation implements EmployeeService {
 
 
     @Override
-    public void saveEmployees(Employee employee) throws DataServiceException {
+    public void registerEmployee(Employee employee) throws BusinessServiceException, MessagingException {
         try {
             employeeDAO.saveEmployees(employee);
-        }catch (DataServiceException e) {
-            throw new BusinessServiceException("Data layer error while Saving the Employee", e); // Wrap data layer exception
-        }
 
+            String subject = "Welcome to RevHire, " + employee.getFullName() + "!";
+            String emailBody = MessageHandle.buildWelcomeEmployeeEmail(employee.getFullName());
+
+            emailService.sendEmail(employee.getOfficialEmail(), subject, emailBody);
+
+        } catch (DataServiceException e) {
+            throw new BusinessServiceException("Data layer error while saving the Employee", e);
+        }
     }
+
 
     @Override
     public String getRoleByEmailAndPassword(String email, String password) throws DataServiceException {
@@ -60,6 +78,32 @@ public class EmployeeServiceImplementation implements EmployeeService {
     public String getNameByEmailAndPassword(String email, String password) {
         return employeeDAO.getNameByEmailAndPassword(email, password);
     }
+
+    @Override
+    public Map<String, Object> login(String email, String password) throws BusinessServiceException {
+        Map<String, Object> response = new HashMap<>();
+
+        try {
+
+            Optional<String> role = Optional.ofNullable(getRoleByEmailAndPassword(email, password));
+            Optional<Long> id = Optional.ofNullable(getIdByEmailAndPassword(email, password));
+            Optional<String> fullName = Optional.ofNullable(getNameByEmailAndPassword(email, password));
+
+            if (role.isPresent() && id.isPresent()) {
+                response.put("role", role.get());
+                response.put("id", id.get());
+                response.put("fullName", fullName.orElse("Unknown User"));
+            } else {
+            }
+        } catch (DataServiceException e) {
+            throw new BusinessServiceException("Error during login operation", e);
+        }
+
+        return response;
+    }
+
+
+
 
     /**
      *
@@ -114,15 +158,7 @@ public class EmployeeServiceImplementation implements EmployeeService {
         return employeeDAO.getallJobPosting(page,size);
     }
 
-   /* @Override
-    public List<JobPosting> getallJobPosting() {
-        try {
-            return employeeDAO.getallJobPosting();
-        } catch(DataServiceException e) {
-            throw new BusinessServiceException("Data layer error while fetching the All the applications", e);
-        }
 
-    }*/
 
     @Override
     public Employee updateEmployee(Long id, Employee updatedEmployee) throws DataServiceException {
@@ -197,6 +233,34 @@ public class EmployeeServiceImplementation implements EmployeeService {
         }
 
     }
+    @Override
+    public void shortlistApplication(Long jobPostingId, Long jobSeekerId, Long applicationId)
+            throws BusinessServiceException, MessagingException {
+        try {
+            // Fetching the Job Seeker and Job Posting details
+            JobSeeker jobSeeker = jobService.getJobSeekerById(jobSeekerId);
+            JobPosting jobPosting = jobService.getJobPostingById(jobPostingId);
+
+            // Retrieving application status if applicationId is provided
+            Applications applications = getStatusByApplicationId(applicationId);
+            String applicationStatus = applications.getStatus(); // Assuming getStatus() returns a String like "Shortlisted", "Rejected", or "Pending"
+
+            // Construct the subject based on the application status
+            String subject = switch (applicationStatus) {
+                case "Shortlisted" -> "Congratulations! You've been shortlisted for " + jobPosting.getCompanyName();
+                case "Rejected" -> "Application Update from " + jobPosting.getCompanyName();
+                default -> "Application Status Update for " + jobPosting.getCompanyName();
+            };
+
+            String emailBody =MessageHandle.buildApplicationStatusEmail(jobSeeker.getFullName(), jobPosting.getCompanyName(), applicationStatus);
+
+            emailService.sendEmail(jobSeeker.getEmail(), subject, emailBody);
+
+        } catch (DataServiceException e) {
+            throw new BusinessServiceException("Data layer error while updating the application", e);
+        }
+    }
+
 
     @Override
     public void deleteJobPostingById(Long id) throws DataServiceException{

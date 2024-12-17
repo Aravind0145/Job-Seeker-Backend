@@ -6,9 +6,11 @@ import com.Aravind.demo.entity.Applications;
 import com.Aravind.demo.entity.JobPosting;
 import com.Aravind.demo.entity.JobSeeker;
 import com.Aravind.demo.entity.Resume;
+import jakarta.mail.MessagingException;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.util.Map;
 
 @Service
 public interface JobService {
@@ -30,7 +32,7 @@ public interface JobService {
      *                                  to the database. This exception is thrown to signal
      *                                  issues related to business logic or database interactions.
      */
-    void saveJobSeeker(JobSeeker jobSeeker) throws BusinessServiceException;
+    void registerJobSeeker(JobSeeker jobSeeker) throws BusinessServiceException, MessagingException;
 
     /**
      * Retrieves the role of the JobSeeker based on the provided email and password.
@@ -183,13 +185,17 @@ public interface JobService {
      * It associates the application with the relevant JobSeeker, JobPosting, and Resume
      * details before persisting the application.
      *
-     * @param applications The {@link Applications} object containing details of the job application
      *                     such as the JobSeeker, JobPosting, and Resume information.
      * @throws BusinessServiceException If an error occurs during the submission process,
      *         such as database access issues or invalid application details.
      */
-    void submitApplication(Applications applications) throws BusinessServiceException;
+    void registerApplication(Long jobSeekerId, Long jobPostingId, Long resumeId, Applications application)
+            throws BusinessServiceException, MessagingException;
 
+    Map<String, Object> login(String email, String password) throws BusinessServiceException;
+
+
+    boolean  hasUserApplied(Long jobId,Long userId) throws BusinessServiceException;
     /**
      * Retrieves a JobPosting by its unique identifier.
      *

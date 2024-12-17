@@ -10,8 +10,13 @@ import com.Aravind.demo.entity.JobSeeker;
 import com.Aravind.demo.entity.Resume;
 import jakarta.persistence.EntityNotFoundException;
 import jakarta.persistence.NoResultException;
-import org.hibernate.*;
+import org.hibernate.Session;
+import org.hibernate.SessionFactory;
+import org.hibernate.Transaction;
 import org.hibernate.query.Query;
+
+import org.hibernate.HibernateException;
+import org.hibernate.NonUniqueResultException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -45,10 +50,10 @@ public class JobSeekerDaoImplementation implements JobSeekerDao {
     public void saveJobseeker(JobSeeker jobSeeker) throws DataServiceException {
         Session session = null;
         try {
-            session = sessionFactory.openSession();  // Open a session
-            session.beginTransaction();  // Begin the transaction
-            session.save(jobSeeker);  // Save the jobSeeker entity
-            session.getTransaction().commit();  // Commit the transaction
+            session = sessionFactory.openSession();
+            session.beginTransaction();
+            session.save(jobSeeker);
+            session.getTransaction().commit();
 
         } catch (HibernateException e) {
             if (session.getTransaction() != null) {
@@ -58,7 +63,7 @@ public class JobSeekerDaoImplementation implements JobSeekerDao {
 
         } finally {
             if (session != null) {
-                session.close();  // Close the session
+                session.close();
             }
         }
 
@@ -129,7 +134,7 @@ public class JobSeekerDaoImplementation implements JobSeekerDao {
         Long result = null;
 
         try {
-            session = sessionFactory.openSession(); // Get current session
+            session = sessionFactory.openSession();
             Query<Long> query = session.createQuery(JobSeekerQueries.GET_ID_BY_EMAIL_AND_PASSWORD, Long.class);
             query.setParameter("email", email);
             query.setParameter("password", password);
@@ -177,28 +182,28 @@ public class JobSeekerDaoImplementation implements JobSeekerDao {
     public String getNameByEmailAndPassword(String email, String password) throws DataServiceException {
         Session session = null;
         try {
-            session = sessionFactory.openSession(); // Open a session
+            session = sessionFactory.openSession();
             Query<String> query = session.createQuery(JobSeekerQueries.GET_FULLNAME_BY_EMAIL_AND_PASSWORD, String.class);
             query.setParameter("email", email);
             query.setParameter("password", password);
 
-            // Execute query and get the unique result
+
             return (String) query.uniqueResult();
 
         } catch (NoResultException e) {
-            // No JobSeeker found with the given email and password
+
             throw new DataServiceException("No JobSeeker found for the provided email and password.", e);
 
         } catch (NonUniqueResultException e) {
-            // Multiple JobSeekers found with the same email and password (this is unexpected behavior)
+
             throw new DataServiceException("Multiple JobSeekers found for the provided email and password.", e);
 
         } catch (HibernateException e) {
-            // General Hibernate-related exceptions (e.g., query issues, database errors)
+
             throw new DataServiceException("Error executing query to fetch JobSeeker full name.", e);
 
         } finally {
-            // Ensure the session is closed to release resources
+
             if (session != null) {
                 session.close();
             }
@@ -225,23 +230,23 @@ public class JobSeekerDaoImplementation implements JobSeekerDao {
     public void saveJobResume(Resume resume) throws DataServiceException{
         Session session = null;
         try {
-            session = sessionFactory.openSession(); // Open a session
-            session.beginTransaction(); // Begin the transaction
-            // Save the resume entity
+            session = sessionFactory.openSession();
+            session.beginTransaction();
+
             session.save(resume);
-            // Commit the transaction
+
             session.getTransaction().commit();
 
         } catch (HibernateException e) {
-            // If an exception occurs, roll back the transaction and throw a custom exception
+
             if (session != null && session.getTransaction() != null) {
                 session.getTransaction().rollback();
             }
-            // Wrap the Hibernate exception in a custom DataServiceException
+
             throw new DataServiceException("Error saving Job Resume in the database", e);
 
         } finally {
-            // Ensure the session is closed to release resources
+
             if (session != null) {
                 session.close();
             }
@@ -254,22 +259,22 @@ public class JobSeekerDaoImplementation implements JobSeekerDao {
     public boolean checkResumeExistence(Long jobseekerId) throws DataServiceException{
         Session session = sessionFactory.openSession();
         try {
-            // Create the HQL query to count resumes associated with the jobseeker
+
             Query<Long> query = session.createQuery("SELECT count(r) FROM Resume r WHERE r.jobSeeker.id = :jobSeekerId", Long.class);
             query.setParameter("jobSeekerId", jobseekerId);
 
-            // Execute the query and get the count of resumes
+
             Long count = query.getSingleResult();
 
-            // If count is greater than 0, resume exists
+
             return count > 0;
         } catch (HibernateException e) {
-            // Log the exception (optional)
+
             System.err.println("Hibernate exception occurred while checking resume existence: " + e.getMessage());
-            // Throw a custom DataServiceException with a specific message
+
             throw new DataServiceException("Error occurred while checking resume existence for jobseeker ID: " + jobseekerId, e);
         } finally {
-            // Ensure session is closed after use
+
             session.close();
         }
     }
@@ -301,23 +306,22 @@ public class JobSeekerDaoImplementation implements JobSeekerDao {
         JobSeeker jobSeeker = null;
 
         try {
-            session = sessionFactory.openSession();  // Open session
-            session.beginTransaction();  // Begin transaction
+            session = sessionFactory.openSession();
+            session.beginTransaction();
 
-            // Fetch JobSeeker by ID
+
             jobSeeker = session.get(JobSeeker.class, id);
 
-            // Commit the transaction
             session.getTransaction().commit();
         } catch (HibernateException e) {
-            // If there is an issue, rollback the transaction
+
             if (session != null && session.getTransaction() != null) {
                 session.getTransaction().rollback();
             }
-            // Wrap Hibernate exception in a custom DataServiceException
+
             throw new DataServiceException("Error retrieving JobSeeker by ID", e);
         } finally {
-            // Close session to release resources
+
             if (session != null) {
                 session.close();
             }
@@ -349,16 +353,16 @@ public class JobSeekerDaoImplementation implements JobSeekerDao {
         Session session = null;
         Resume resume = null;
         try {
-            session = sessionFactory.openSession(); // Get current session
+            session = sessionFactory.openSession();
             Query<Resume> query = session.createQuery(JobSeekerQueries.GET_RESUME_BY_JOBSEEKERID, Resume.class);
             query.setParameter("jobseekerId", jobseekerId);
-            // Retrieve the unique result, or null if no result is found
+
             resume = query.uniqueResult();
         } catch (HibernateException e) {
-            // If an exception occurs, throw a custom exception to notify of the error
+
             throw new DataServiceException("Error retrieving Resume for JobSeeker with ID: " + jobseekerId, e);
         } finally {
-            // Ensure the session is closed to release resources
+
             if (session != null) {
                 session.close();
             }
@@ -379,23 +383,23 @@ public class JobSeekerDaoImplementation implements JobSeekerDao {
     @Override
     public boolean updateJobSeekerPassword(String email, String password) throws DataServiceException {
         Session session = null;
-        Transaction transaction = null;  // To manage the transaction
+        Transaction transaction = null;
         boolean isUpdated = false;
 
         try {
-            session = sessionFactory.openSession(); // Open a new session
-            transaction = session.beginTransaction(); // Start the transaction
+            session = sessionFactory.openSession();
+            transaction = session.beginTransaction();
 
-            // HQL query for updating the JobSeeker password
+
             Query query = session.createQuery(JobSeekerQueries.UPDATE_JOBSEEKER_PASSWORD);
             query.setParameter("password", password);  // Use plain password, it should be hashed before storing
             query.setParameter("email", email);
 
-            // Execute the update
+
             int result = query.executeUpdate();
 
             if (result > 0) {
-                transaction.commit(); // Commit the transaction if the update is successful
+                transaction.commit();
                 isUpdated = true;
             } else {
                 throw new EntityNotFoundException("No JobSeeker found with the provided email: " + email);
@@ -407,18 +411,18 @@ public class JobSeekerDaoImplementation implements JobSeekerDao {
             throw new DataServiceException("JobSeeker not found with email: " + email, e);
         } catch (HibernateException e) {
             if (transaction != null) {
-                transaction.rollback(); // Rollback in case of an error
+                transaction.rollback();
             }
             throw new DataServiceException("Error updating JobSeeker password for email: " + email, e);
 
         } finally {
-            // Ensure the session is closed to release resources
+
             if (session != null) {
                 session.close();
             }
         }
 
-        return isUpdated; // Return whether the update was successful
+        return isUpdated;
     }
 
     /**
@@ -433,24 +437,23 @@ public class JobSeekerDaoImplementation implements JobSeekerDao {
         boolean exists = false;
 
         try {
-            session = sessionFactory.openSession(); // Open a session
+            session = sessionFactory.openSession();
             Query<Long> query = session.createQuery(JobSeekerQueries.CHECK_EMAIL, Long.class);
             query.setParameter("email", email);
 
             Long count = query.uniqueResult();
-            exists = count > 0; // If count is greater than 0, the email exists
+            exists = count > 0;
 
         } catch (HibernateException e) {
-            // Rollback transaction and handle the exception if any database error occurs
             throw new DataServiceException("Error checking if email exists in the database: " + email, e);
         } finally {
-            // Ensure session is closed to release resources
+
             if (session != null) {
                 session.close();
             }
         }
 
-        return exists; // Return whether the email exists or not
+        return exists;
     }
 
     /**
@@ -463,37 +466,15 @@ public class JobSeekerDaoImplementation implements JobSeekerDao {
      * @throws DataServiceException If an error occurs while saving the application
      *         or during transaction management.
      */
-  /*  @Override
-    public void submitApplication(Applications applications) throws DataServiceException {
-        Session session = null;
-        try {
-            session = sessionFactory.openSession(); // Open session
-            session.beginTransaction(); // Begin transaction
-            session.save(applications); // Save the application
-            session.getTransaction().commit(); // Commit the transaction
-        } catch (HibernateException e) {
-            // If an exception occurs, roll back the transaction and throw a custom exception
-            if (session != null && session.getTransaction() != null) {
-                session.getTransaction().rollback();
-            }
-            // Wrap the Hibernate exception in a custom DataServiceException
-            throw new DataServiceException("Error submitting application", e);
-        } finally {
-            // Ensure the session is closed to release resources
-            if (session != null) {
-                session.close();
-            }
-        }
-    }
-*/
-@Override
-    public void submitApplication(Applications applications) throws DataServiceException {
-        Session session = null;
-        try {
-            session = sessionFactory.openSession(); // Open session
-            session.beginTransaction(); // Begin transaction
 
-            // Check if job seeker has already applied for the same job posting
+    @Override
+    public void submitApplication(Applications applications) throws DataServiceException {
+        Session session = null;
+        try {
+            session = sessionFactory.openSession();
+            session.beginTransaction();
+
+
             Query<Applications> query = session.createQuery(EmployeeQuries.submitapplication, Applications.class
             );
             query.setParameter("jobSeekerId", applications.getJobSeeker().getId());
@@ -504,8 +485,8 @@ public class JobSeekerDaoImplementation implements JobSeekerDao {
                 throw new DataServiceException("You have already applied for this job.");
             }
 
-            session.save(applications); // Save the application
-            session.getTransaction().commit(); // Commit the transaction
+            session.save(applications);
+            session.getTransaction().commit();
         } catch (HibernateException e) {
             if (session != null && session.getTransaction() != null) {
                 session.getTransaction().rollback();
@@ -517,6 +498,34 @@ public class JobSeekerDaoImplementation implements JobSeekerDao {
             }
         }
     }
+
+    @Override
+    public boolean hasUserApplied(Long jobId, Long userId) throws DataServiceException {
+        Session session = null;
+        boolean exists = false;
+
+        try {
+            session = sessionFactory.openSession();
+            Query<Long> query = session.createQuery(EmployeeQuries.applicationstatus, Long.class);
+            query.setParameter("jobSeekerId", userId);
+            query.setParameter("jobPostingId", jobId);
+
+            Long count = query.uniqueResult();
+            exists = count > 0;
+
+        } catch (HibernateException e) {
+
+            throw new DataServiceException("Error checking if application exists in the database: ", e);
+        } finally {
+
+            if (session != null) {
+                session.close();
+            }
+        }
+
+        return exists;
+    }
+
 
 
     /**
@@ -533,25 +542,24 @@ public class JobSeekerDaoImplementation implements JobSeekerDao {
         JobPosting jobPosting = null;
 
         try {
-            session = sessionFactory.openSession();  // Open session
-            session.beginTransaction();  // Begin transaction
+            session = sessionFactory.openSession();
+            session.beginTransaction();
 
-            // Fetch JobPosting by ID
+
             jobPosting = session.get(JobPosting.class, jobPostingId);
 
-            // Commit transaction if the fetch was successful
+
             session.getTransaction().commit();
 
         } catch (HibernateException e) {
-            // If an exception occurs, roll back the transaction
             if (session != null && session.getTransaction() != null) {
                 session.getTransaction().rollback();
             }
-            // Throw a custom DataServiceException with the Hibernate error message
+
             throw new DataServiceException("Error retrieving JobPosting with ID: " + jobPostingId, e);
 
         } finally {
-            // Ensure the session is closed to release resources
+
             if (session != null) {
                 session.close();
             }
@@ -571,21 +579,20 @@ public class JobSeekerDaoImplementation implements JobSeekerDao {
         Resume resume = null;
 
         try {
-            session = sessionFactory.openSession();  // Open session
-            session.beginTransaction();  // Begin transaction
+            session = sessionFactory.openSession();
+            session.beginTransaction();
 
-            // Fetch Resume by ID
             resume = session.get(Resume.class, resumeId);
 
-            // Commit transaction if the fetch was successful
+
             session.getTransaction().commit();
 
         } catch (HibernateException e) {
-            // If an exception occurs, roll back the transaction
+
             if (session != null && session.getTransaction() != null) {
                 session.getTransaction().rollback();
             }
-            // Throw a custom DataServiceException with the Hibernate error message
+
             throw new DataServiceException("Error retrieving Resume with ID: " + resumeId, e);
 
         } finally {
@@ -613,22 +620,23 @@ public class JobSeekerDaoImplementation implements JobSeekerDao {
 
     @Override
     public JobSeeker updateJobSeeker(Long id, JobSeeker updatedJobSeeker) throws DataServiceException {
-        Session session = sessionFactory.openSession(); // Open a new session
-        Transaction transaction = session.beginTransaction(); // Start the transaction
+        Session session = sessionFactory.openSession();
+        Transaction transaction = session.beginTransaction();
         JobSeeker updatedEntity = null;
 
         try {
-            // HQL query for updating the JobSeeker
+
             Query query = session.createQuery(JobSeekerQueries.UPDATE_JOBSEEKER);
             query.setParameter("fullName", updatedJobSeeker.getFullName());
             query.setParameter("email", updatedJobSeeker.getEmail());
             query.setParameter("password", updatedJobSeeker.getPassword());
             query.setParameter("phone", updatedJobSeeker.getPhone());
+            query.setParameter("profilePhoto", updatedJobSeeker.getProfilePhoto());
             query.setParameter("workStatus", updatedJobSeeker.getWorkStatus());
             query.setParameter("promotions", updatedJobSeeker.isPromotions());
             query.setParameter("id", id);
 
-            // Execute update and check results
+
             int result = query.executeUpdate();
 
             if (result > 0) {
@@ -645,10 +653,10 @@ public class JobSeekerDaoImplementation implements JobSeekerDao {
             throw new DataServiceException("JobSeeker not found with id: " + id, e); // Wrap EntityNotFoundException in DataServiceException
 
         } finally {
-            session.close(); // Ensure the session is closed
+            session.close();
         }
 
-        return updatedEntity; // Return the updated JobSeeker object
+        return updatedEntity;
     }
 
 
@@ -664,16 +672,16 @@ public class JobSeekerDaoImplementation implements JobSeekerDao {
     public List<Applications> getApplicationsByJobSeeker(Long jobSeekerId) throws DataServiceException {
         Session session = null;
         try {
-            session = sessionFactory.openSession(); // Open a session
+            session = sessionFactory.openSession();
             Query<Applications> query = session.createQuery(JobSeekerQueries.GET_APPLICATION_BY_JOBSEEKER, Applications.class);
             query.setParameter("jobSeekerId", jobSeekerId);
-            return query.list(); // Return the list of applications
+            return query.list();
         } catch (HibernateException e) {
-            // Wrap and rethrow Hibernate exceptions as DataServiceException
+
             throw new DataServiceException("Error fetching applications for JobSeeker with ID: " + jobSeekerId, e);
         } finally {
             if (session != null) {
-                session.close(); // Ensure the session is closed
+                session.close();
             }
         }
     }
@@ -695,29 +703,28 @@ public class JobSeekerDaoImplementation implements JobSeekerDao {
         try {
             transaction = session.beginTransaction();
 
-            // Get the application to be deleted
             Applications application = session.createQuery(JobSeekerQueries.WITHDRAW_APPLICATION, Applications.class)
                     .setParameter("applicationId", applicationId)
                     .setParameter("jobSeekerId", jobSeekerId)
                     .uniqueResult();
 
             if (application != null) {
-                session.delete(application); // Delete the application
-                transaction.commit(); // Commit the transaction
+                session.delete(application);
+                transaction.commit();
                 return true;
             } else {
-                return false; // Application not found
+                return false;
             }
 
         } catch (HibernateException e) {
             if (transaction != null) {
-                transaction.rollback(); // Rollback in case of error
+                transaction.rollback();
             }
-            // Wrap the Hibernate exception in a custom DataServiceException
+
             throw new DataServiceException("Error withdrawing application with ID: " + applicationId + " for JobSeeker with ID: " + jobSeekerId, e);
         }
         finally {
-            session.close(); // Close the session
+            session.close();
         }
     }
 
@@ -745,15 +752,15 @@ public class JobSeekerDaoImplementation implements JobSeekerDao {
 
             jobPostings = query.list();
 
-            transaction.commit(); // Commit transaction
+            transaction.commit();
         } catch (HibernateException e) {
             if (transaction != null) {
-                transaction.rollback(); // Rollback transaction in case of error
+                transaction.rollback();
             }
-            // Throw custom exception when Hibernate-related error occurs
+
             throw new DataServiceException("Error occurred while searching for job postings due to Hibernate issue", e);
         } finally {
-            session.close(); // Close session
+            session.close();
         }
 
         return jobPostings;
@@ -809,27 +816,27 @@ public class JobSeekerDaoImplementation implements JobSeekerDao {
             query.setParameter("jobDescription", resume.getJobDescription());
             query.setParameter("id", id);
 
-            // Execute the update
+
             int result = query.executeUpdate();
 
             if (result > 0) {
-                transaction.commit(); // Commit the transaction if the update is successful
-                // Fetch the updated Resume object
+                transaction.commit();
+
                 updatedEntity = session.get(Resume.class, id);
             } else {
                 throw new EntityNotFoundException("Resume with id " + id + " not found.");
             }
         } catch (HibernateException e) {
             if (transaction != null) {
-                transaction.rollback(); // Rollback in case of an error
+                transaction.rollback();
             }
-            // Wrap HibernateException in a custom DataServiceException
+
             throw new DataServiceException("Error updating Resume with id: " + id, e);
         } finally {
-            session.close(); // Close the session
+            session.close();
         }
 
-        return updatedEntity; // Return the updated Resume object
+        return updatedEntity;
     }
 
 

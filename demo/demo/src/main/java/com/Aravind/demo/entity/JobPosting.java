@@ -1,6 +1,14 @@
 package com.Aravind.demo.entity;
 
-import jakarta.persistence.*;
+import jakarta.persistence.Column;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.Id;
+import jakarta.persistence.Entity;
+import jakarta.persistence.Table;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.ManyToOne;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.CascadeType;
 import org.hibernate.annotations.CreationTimestamp;
 
 import java.sql.Date;
@@ -10,13 +18,13 @@ import java.sql.Date;
 public class JobPosting {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY) // Auto-increment ID
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    // One JobPosting belongs to one Employee
-    @ManyToOne(cascade = CascadeType.ALL) // Add CascadeType.ALL
-    @JoinColumn(name = "employee_id", nullable = false)  // Foreign key column in JobPosting
-    private Employee employee;  // This represents the Employee who posted the job
+
+    @ManyToOne(cascade = CascadeType.ALL)
+    @JoinColumn(name = "employee_id", nullable = false)
+    private Employee employee;
 
     @Column(nullable = false)
     private String jobTitle;
@@ -25,7 +33,7 @@ public class JobPosting {
     private String jobDescription;
 
     @Column(nullable = false)
-    private String rolesAndResponsibilities; // New field for roles and responsibilities
+    private String rolesAndResponsibilities;
 
     @Column(nullable = false)
     private String companyName;
@@ -49,10 +57,10 @@ public class JobPosting {
     private String experience;
 
     @Column(nullable = false)
-    private String education; // New field for education
+    private String education;
 
     @Column(nullable = false)
-    private int numberOfOpenings; // New field for number of openings
+    private int numberOfOpenings;
 
     @CreationTimestamp
     @Column(nullable = false)
@@ -61,7 +69,7 @@ public class JobPosting {
     @Column(nullable = false)
     private Date lastDate;
 
-    // Getters and Setters
+
     public Long getId() {
         return id;
     }

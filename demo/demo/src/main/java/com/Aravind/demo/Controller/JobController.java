@@ -2,7 +2,7 @@ package com.Aravind.demo.Controller;
 
 
 import com.Aravind.demo.Constants.JobSeekerURLConstant;
-import com.Aravind.demo.DemoApplication;
+
 import com.Aravind.demo.Exception.BusinessServiceException;
 import com.Aravind.demo.Service.EmailService;
 import com.Aravind.demo.Service.JobService;
@@ -10,29 +10,36 @@ import com.Aravind.demo.entity.Applications;
 import com.Aravind.demo.entity.JobPosting;
 import com.Aravind.demo.entity.JobSeeker;
 import com.Aravind.demo.entity.Resume;
-import io.micrometer.observation.GlobalObservationConvention;
-import jakarta.persistence.EntityNotFoundException;
+
+import jakarta.mail.MessagingException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.http.*;
-import org.springframework.util.LinkedMultiValueMap;
-import org.springframework.util.MultiValueMap;
-import org.springframework.web.bind.annotation.*;
-import org.springframework.web.client.RestTemplate;
-import org.springframework.web.multipart.MultipartFile;
+
+import org.springframework.http.ResponseEntity;
+import org.springframework.http.HttpStatus;
+
+
+import org.springframework.web.bind.annotation.CrossOrigin;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.server.ResponseStatusException;
 
-import java.io.File;
-import java.io.IOException;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
-@CrossOrigin(origins = "http://localhost:4200")
+@CrossOrigin(origins = JobSeekerURLConstant.FRONTEND_URL)
 @RestController
-@RequestMapping("/api")
+@RequestMapping(JobSeekerURLConstant.BASE_API_URL)
 public class JobController {
     private static final Logger logger = LoggerFactory.getLogger(JobController.class);
 
@@ -62,14 +69,16 @@ public class JobController {
 
 
     @PostMapping(JobSeekerURLConstant.JOBSEEKER_REGISTER)
-    public JobSeeker AddJobsSeekers(@RequestBody JobSeeker jobSeeker) throws BusinessServiceException {
-        jobService.saveJobSeeker(jobSeeker);
-        logger.info("Job seeker is Registered Successfully");
-        emailService.sendEmail(jobSeeker.getEmail(),
-                "Welcome to RevHire!"+jobSeeker.getFullName(),
-                "Thank you for registering with RevHire!");// Save the JobSeeker entity using saveEmployees
-        return jobSeeker;  // Return the saved JobSeeker object
+    public JobSeeker addJobSeeker(@RequestBody JobSeeker jobSeeker) throws BusinessServiceException, MessagingException {
+
+        jobService.registerJobSeeker(jobSeeker);
+        logger.info(jobSeeker.getFullName() + " Job Seeker registered successfully");
+
+
+        return jobSeeker;
     }
+
+
 
     /**
      * Handles the login process for a JobSeeker by validating their email and password.
@@ -98,26 +107,18 @@ public class JobController {
 
 
     @PostMapping(JobSeekerURLConstant.JOBSSEEKER_LOGIN)
-    public ResponseEntity<Map<String, Object>> login(@RequestBody Map<String, String> loginRequest) throws BusinessServiceException{
+    public ResponseEntity<Map<String, Object>> login(@RequestBody Map<String, String> loginRequest) throws BusinessServiceException {
         String email = loginRequest.get("email");
         String password = loginRequest.get("password");
 
-        // Assuming you have a method to retrieve the user's role and ID
-        String role = jobService.getRoleByEmailAndPassword(email, password);
-        Long id = jobService.getIdByEmailAndPassword(email, password);
-        String fullName = jobService.getNameByEmailAndPassword(email,password);
-        logger.info("job seeker is logged in");
-        if (role != null && id != null) {
-            Map<String, Object> response = new HashMap<>();
-            response.put("role", role);
-            response.put("id", id);
-            response.put("fullName",fullName);
-            return ResponseEntity.ok(response);
-        } else {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(null);
-        }
 
+        Map<String, Object> response = jobService.login(email, password);
+
+        logger.info("Job seeker logged in successfully");
+
+        return ResponseEntity.ok(response);
     }
+
 
 
     /**
@@ -134,8 +135,11 @@ public class JobController {
 
     @GetMapping(JobSeekerURLConstant.JOBSEEKER_RESUMEDETAILS)
     public ResponseEntity<Resume> getResume(@PathVariable Long id) throws BusinessServiceException {
-        Resume resume = jobService.getResumeByJobseekerId(id);
-        return resume != null ? ResponseEntity.ok(resume) : ResponseEntity.notFound().build();
+        Optional<Resume> resumeOptional = Optional.ofNullable(jobService.getResumeByJobseekerId(id));  // Wrap the resume in Optional
+
+        return resumeOptional
+                .map(resume -> ResponseEntity.ok(resume))  // If resume is present, return 200 OK with resume
+                .orElseGet(() -> ResponseEntity.notFound().build());  // If resume is not present, return 404 Not Found
     }
 
     /**
@@ -155,7 +159,7 @@ public class JobController {
         String email = passwordUpdateRequest.get("email");
         String newPassword = passwordUpdateRequest.get("password");
 
-        // Call service to update the password
+
         boolean isUpdated = jobService.updateJobSeekerPassword(email, newPassword);
         logger.info("password updated successfully");
         Map<String, Object> response = new HashMap<>();
@@ -210,17 +214,18 @@ public class JobController {
      */
 
     @PostMapping(JobSeekerURLConstant.JOBSEEKER_RESUME)
-    public Resume addResume(@PathVariable("id") Long id, @RequestBody Resume resume) throws BusinessServiceException {
-        // Fetch the JobSeeker by ID using Hibernate
-        JobSeeker jobSeeker = jobService.getJobSeekerById(id); // Get JobSeeker from the service
-        logger.info("fetching the job seeker id and send it to the Resume  ");
-        if (jobSeeker != null) {
-            resume.setJobSeeker(jobSeeker);
-            jobService.saveJobResume(resume); // Save the resume
-            return resume;
-        } else {
-            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Job Seeker not found");
-        }
+    public ResponseEntity<Resume> addResume(@PathVariable("id") Long id, @RequestBody Resume resume) throws BusinessServiceException {
+        Optional<JobSeeker> jobSeekerOptional = Optional.ofNullable(jobService.getJobSeekerById(id));  // Wrap the JobSeeker in Optional
+        logger.info("Fetching the job seeker id and sending it to the Resume");
+
+        return jobSeekerOptional
+                .map(jobSeeker -> {
+                    resume.setJobSeeker(jobSeeker);
+                    jobService.saveJobResume(resume);  // Save the resume
+                    return ResponseEntity.ok(resume);  // Return 200 OK with the resume
+                })
+                .orElseGet(() -> ResponseEntity.status(HttpStatus.NOT_FOUND)
+                        .body(null));  // Return 404 NOT_FOUND if JobSeeker is not found
     }
 
 
@@ -234,11 +239,11 @@ public class JobController {
      * @return {@code true} if the jobseeker has a resume, {@code false} otherwise.
      * @throws BusinessServiceException if an error occurs while checking the resume existence, such as database connectivity issues.
      */
-    
+
     @GetMapping(JobSeekerURLConstant.JOBSEEKER_CHECK_RESUME)
     public ResponseEntity<Boolean> checkResumeExistence(@PathVariable("jobseekerId") Long jobseekerId)  throws BusinessServiceException {
         try {
-            // Check if resume exists for the jobseeker
+
             boolean exists = jobService.checkResumeExistence(jobseekerId);
             return ResponseEntity.ok(exists);
         } catch (Exception e) {
@@ -260,87 +265,73 @@ public class JobController {
      *         or if any other error occurs during the application submission process.
      */
 
-
-    // Updated endpoint to handle dynamic path parameters
-   /* @PostMapping(JobSeekerURLConstant.JOBSEEKER_APPLICATIONS)
-    public ResponseEntity<Applications> applyToJob(
-            @PathVariable Long jobPostingId,
-            @PathVariable Long jobSeekerId,
-            @PathVariable Long resumeId,
-            @RequestBody Applications application) throws BusinessServiceException {
-
-        // Retrieve job seeker, job posting, and resume by their IDs
-        JobSeeker jobSeeker = jobService.getJobSeekerById(jobSeekerId);
-
-
-        JobPosting jobPosting = jobService.getJobPostingById(jobPostingId);
-        Resume resume = jobService.getResumeById(resumeId);
-
-        emailService.sendEmail(jobSeeker.getEmail(),
-                "Welcome to !",
-                "Thank you for applying "+ jobPosting.getCompanyName());//
-        logger.info("Applied to job successfully"  +jobSeeker.getFullName());
-
-        application.setJobSeeker(jobSeeker);
-        application.setJobPosting(jobPosting);
-        application.setResume(resume);
-
-        // jobService.saveJobResume(resume);
-
-        // Save the application
-        jobService.submitApplication(application);
-
-        // Return the updated application object
-        return ResponseEntity.ok(application);
-    }
-
-*/
-
     @PostMapping(JobSeekerURLConstant.JOBSEEKER_APPLICATIONS)
     public ResponseEntity<Applications> applyToJob(
             @PathVariable Long jobPostingId,
             @PathVariable Long jobSeekerId,
             @PathVariable Long resumeId,
-            @RequestBody Applications application) throws BusinessServiceException {
+            @RequestBody Applications application) throws BusinessServiceException, MessagingException {
 
+
+        jobService.registerApplication(jobSeekerId, jobPostingId, resumeId, application);
+
+        logger.info("Applied to job successfully: " + application.getJobSeeker().getFullName());
+
+
+        return ResponseEntity.ok(application);
+    }
+
+
+    /**
+     *
+     * Checks if a user (job seeker) has applied for a specific job posting.
+     *
+     * @param jobId  The unique identifier of the job posting.
+     * @param userId The unique identifier of the user (job seeker).
+     * @return {@link ResponseEntity} containing a {@link Boolean} value:
+     *         {@code true} if the user has applied, {@code false} otherwise.
+     * @throws BusinessServiceException If there is an issue during the business logic execution.
+
+     */
+
+
+    @GetMapping(JobSeekerURLConstant.APPLICATION_STATUS)
+    public ResponseEntity<Boolean> checkApplicationStatus(@RequestParam Long jobId, @RequestParam Long userId) throws BusinessServiceException {
         try {
-            // Retrieve job seeker, job posting, and resume by their IDs
-            JobSeeker jobSeeker = jobService.getJobSeekerById(jobSeekerId);
-            JobPosting jobPosting = jobService.getJobPostingById(jobPostingId);
-            Resume resume = jobService.getResumeById(resumeId);
 
-            // Set the job seeker, job posting, and resume into the application
-            application.setJobSeeker(jobSeeker);
-            application.setJobPosting(jobPosting);
-            application.setResume(resume);
+            boolean hasApplied = jobService.hasUserApplied(jobId, userId);
 
-            // Call the service method to submit the application
-            jobService.submitApplication(application);
-            emailService.sendEmail(jobSeeker.getEmail(),
-                    "Welcome to !",
-                    "Thank you for applying "+ jobPosting.getCompanyName());
 
-            logger.info("Applied to job successfully"  +jobSeeker.getFullName());
+            logger.info("Checking application status: Job ID = {}, User ID = {}, Applied = {}", jobId, userId, hasApplied);
 
-            return ResponseEntity.ok(application); // Return HTTP 200 with the application details
-        } catch (BusinessServiceException e) {
-            // Handle the case where the job seeker has already applied for the job
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                    .body(null); // HTTP 400 - Bad Request
+            return ResponseEntity.ok(hasApplied);
+        } catch (Exception e) {
+
+            logger.error("Error checking application status: ", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(false);
         }
     }
+
+
+    /**
+     * Checks whether a user has already applied for a specific job posting.
+     *
+     * @param id  The ID of the job posting to check.
+     * @return {@link ResponseEntity} containing a Boolean value:
+     *         {@code true} if the user has applied, {@code false} otherwise.
+     * @throws BusinessServiceException If there is an issue during the business logic processing.
+     */
 
 
 
     @GetMapping(JobSeekerURLConstant.JOBSEEKER_VIEWPROFILE)
-    public ResponseEntity<JobSeeker> getJobSeekerProfile(@PathVariable Long id) {
-        JobSeeker jobseeker = jobService.getJobSeekerById(id);
-        if (jobseeker != null) {
-            return ResponseEntity.ok(jobseeker);
-        } else {
-            return ResponseEntity.notFound().build(); // Return 404 if not found
-        }
+    public ResponseEntity<JobSeeker> getJobSeekerProfile(@PathVariable Long id) throws BusinessServiceException {
+        Optional<JobSeeker> jobSeekerOptional = Optional.ofNullable(jobService.getJobSeekerById(id));  // Wrap JobSeeker in Optional
+        return jobSeekerOptional
+                .map(jobSeeker -> ResponseEntity.ok(jobSeeker))
+                .orElseGet(() -> ResponseEntity.notFound().build());
     }
+
 
     /**
      * Retrieves a Resume by its unique ID.
@@ -357,15 +348,13 @@ public class JobController {
      */
 
     @GetMapping(JobSeekerURLConstant.JOBSEEEKR_VIEWRESUME)
-    public ResponseEntity<Resume> getResumeById(@PathVariable Long id) throws BusinessServiceException{
-        Resume resume = jobService.getResumeById(id);
-        logger.info("based on the id we are fetching the Resume");
-        if (resume != null) {
-            return ResponseEntity.ok(resume);
-        } else {
-            return ResponseEntity.notFound().build(); // Return 404 if not found
-        }
+    public ResponseEntity<Resume> getResumeById(@PathVariable Long id) throws BusinessServiceException {
+        Optional<Resume> resumeOptional = Optional.ofNullable(jobService.getResumeById(id));  // Wrap Resume in Optional
+        return resumeOptional
+                .map(resume -> ResponseEntity.ok(resume))
+                .orElseGet(() -> ResponseEntity.notFound().build());
     }
+
 
 
     /**
@@ -404,11 +393,11 @@ public class JobController {
     public ResponseEntity<Resume> updateResume(
             @RequestBody Resume updatedresume,
             @PathVariable Long id
-    ) throws BusinessServiceException { // Declare the exception thrown by the service method
+    ) throws BusinessServiceException {
 
-        Resume resume = jobService.updatedResume(updatedresume, id); // Let the exception propagate if there's an issue
-            logger.info("Resume Updated Successfully");
-        return ResponseEntity.ok(resume); // Return the updated Resume object
+        Resume resume = jobService.updatedResume(updatedresume, id);
+        logger.info("Resume Updated Successfully");
+        return ResponseEntity.ok(resume);
     }
 
 
@@ -427,6 +416,8 @@ public class JobController {
         return jobService.getApplicationsByJobSeeker(jobSeekerId);
     }
 
+
+
     /**
      * Handles the withdrawal of a job application by a job seeker.
      *
@@ -441,11 +432,11 @@ public class JobController {
     public ResponseEntity<Void> withdrawApplication(@PathVariable Long jobSeekerId, @PathVariable Long applicationId) throws
             BusinessServiceException{
         boolean isDeleted = jobService.withdrawApplication(jobSeekerId, applicationId);
-            logger.info("With Draw Application Successfully");
+        logger.info("With Draw Application Successfully");
         if (isDeleted) {
-            return ResponseEntity.noContent().build(); // 204 No Content, successful deletion
+            return ResponseEntity.noContent().build();
         } else {
-            return ResponseEntity.status(404).build(); // 404 Not Found, application not found
+            return ResponseEntity.status(404).build();
         }
     }
 
@@ -465,22 +456,18 @@ public class JobController {
     public ResponseEntity<List<JobPosting>> searchJobs(
             @PathVariable String jobTitle,
             @PathVariable String location,
-            @PathVariable String experience) throws BusinessServiceException{
+            @PathVariable String experience) throws BusinessServiceException {
 
-        System.out.println("Job Title: " + jobTitle);
-        System.out.println("Location: " + location);
-        System.out.println("Experience: " + experience);
 
-        // Call the service to search for jobs
-        List<JobPosting> jobPostings = jobService.searchJobs(jobTitle, location, experience);
+        Optional<List<JobPosting>> jobPostingsOptional = Optional.ofNullable(jobService.searchJobs(jobTitle, location, experience));
 
-        // Check if there are job postings and return the appropriate response
-        if (jobPostings != null && !jobPostings.isEmpty()) {
-            return ResponseEntity.ok(jobPostings); // Return 200 OK with job postings
-        } else {
-            return ResponseEntity.noContent().build(); // Return 204 No Content if no jobs are found
-        }
+
+        return jobPostingsOptional
+                .filter(jobPostings -> !jobPostings.isEmpty()) // Filter out empty lists
+                .map(ResponseEntity::ok) // Return 200 OK with job postings
+                .orElseGet(() -> ResponseEntity.noContent().build()); // Return 204 No Content if no jobs are found
     }
+
 
 
 

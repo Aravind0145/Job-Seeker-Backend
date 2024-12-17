@@ -1,14 +1,12 @@
 package com.Aravind.demo.Dao;
 
 import com.Aravind.demo.Exception.DataServiceException;
-import com.Aravind.demo.Service.EmployeeService;
+
 import com.Aravind.demo.entity.Applications;
 import com.Aravind.demo.entity.Employee;
 import com.Aravind.demo.entity.JobPosting;
 import com.Aravind.demo.entity.Resume;
-import org.hibernate.Session;
-import org.hibernate.SessionFactory;
-import org.springframework.beans.factory.annotation.Autowired;
+
 import org.springframework.stereotype.Service;
 
 import javax.xml.crypto.Data;

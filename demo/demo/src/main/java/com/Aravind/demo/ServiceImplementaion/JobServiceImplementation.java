@@ -3,22 +3,28 @@ package com.Aravind.demo.ServiceImplementaion;
 import com.Aravind.demo.Dao.JobSeekerDao;
 import com.Aravind.demo.Exception.BusinessServiceException;
 import com.Aravind.demo.Exception.DataServiceException;
-import com.Aravind.demo.Exception.EntityNotFoundException;
+import com.Aravind.demo.Message.MessageHandle;
+import com.Aravind.demo.Service.EmailService;
 import com.Aravind.demo.Service.JobService;
 import com.Aravind.demo.entity.Applications;
 import com.Aravind.demo.entity.JobPosting;
 import com.Aravind.demo.entity.JobSeeker;
 import com.Aravind.demo.entity.Resume;
+import jakarta.mail.MessagingException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.Optional;
 
 @Service
 public class JobServiceImplementation implements JobService {
 
 
-
+    @Autowired
+    private EmailService emailService;
 
     private final JobSeekerDao jobSeekerDao;
     @Autowired
@@ -27,13 +33,21 @@ public class JobServiceImplementation implements JobService {
     }
 
     @Override
-    public void saveJobSeeker(JobSeeker jobSeeker) throws DataServiceException {
+    public void registerJobSeeker(JobSeeker jobSeeker) throws BusinessServiceException, MessagingException {
         try {
             jobSeekerDao.saveJobseeker(jobSeeker);
-        }  catch (DataServiceException e) {
-            throw new BusinessServiceException("Data layer error while updating JobSeeker", e); // Wrap data layer exception
+
+            String subject = "Welcome to RevHire, " + jobSeeker.getFullName() + "!";
+
+            String emailBody = MessageHandle.buildWelcomeEmail(jobSeeker.getFullName());
+
+            emailService.sendEmail(jobSeeker.getEmail(), subject, emailBody);
+
+        } catch (DataServiceException e) {
+            throw new BusinessServiceException("Data layer error while registering JobSeeker", e);
         }
     }
+
 
 
     @Override
@@ -51,7 +65,7 @@ public class JobServiceImplementation implements JobService {
             return jobSeekerDao.getIdByEmailAndPassword(email, password);
         }  catch (DataServiceException e) {
             throw new BusinessServiceException("Data layer error while fetching the Id of JobSeeker", e);
-        }// Wrap data layer exception
+        }
 
     }
 
@@ -120,14 +134,64 @@ public class JobServiceImplementation implements JobService {
     }
 
     @Override
-    public void submitApplication(Applications applications) throws DataServiceException {
-        try {
-            jobSeekerDao.submitApplication(applications);
-        }
-        catch (DataServiceException e)
-        {
-            throw new BusinessServiceException("Data layer error while checking the Email", e);
+    public void registerApplication(Long jobSeekerId, Long jobPostingId, Long resumeId, Applications application)
+            throws BusinessServiceException, MessagingException {
 
+        try {
+
+            JobSeeker jobSeeker = getJobSeekerById(jobSeekerId);
+            JobPosting jobPosting = getJobPostingById(jobPostingId);
+            Resume resume = getResumeById(resumeId);
+
+
+            application.setJobSeeker(jobSeeker);
+            application.setJobPosting(jobPosting);
+            application.setResume(resume);
+
+            jobSeekerDao.submitApplication(application);
+
+            String subject = "Application Received for " + jobPosting.getCompanyName();
+
+            String emailBody = MessageHandle.buildApplicationReceivedEmail(jobSeeker.getFullName(), jobPosting.getCompanyName());
+
+            emailService.sendEmail(jobSeeker.getEmail(), subject, emailBody);
+
+        } catch (DataServiceException e) {
+            throw new BusinessServiceException("Data layer error while submitting the application", e);
+        }
+    }
+
+    @Override
+    public Map<String, Object> login(String email, String password) throws BusinessServiceException {
+        Map<String, Object> response = new HashMap<>();
+
+        try {
+            Optional<String> role = Optional.ofNullable(getRoleByEmailAndPassword(email, password));
+            Optional<Long> id = Optional.ofNullable(getIdByEmailAndPassword(email, password));
+            Optional<String> fullName = Optional.ofNullable(getNameByEmailAndPassword(email, password));
+
+            if (role.isPresent() && id.isPresent()) {
+                response.put("role", role.get());
+                response.put("id", id.get());
+                response.put("fullName", fullName.orElse("Unknown User"));
+            } else {
+            }
+        } catch (DataServiceException e) {
+            throw new BusinessServiceException("Error during login operation", e);
+        }
+
+        return response;
+    }
+
+
+
+
+    @Override
+    public boolean hasUserApplied(Long jobId, Long userId) throws DataServiceException {
+        try {
+            return jobSeekerDao.hasUserApplied(jobId, userId);
+        } catch (DataServiceException e) {
+            throw new BusinessServiceException("Data layer error while checking the jobposting id ", e);
         }
     }
 

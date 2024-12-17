@@ -1,7 +1,11 @@
 package com.Aravind.demo.Dao;
 
 import com.Aravind.demo.Exception.DataServiceException;
-import com.Aravind.demo.entity.*;
+import com.Aravind.demo.entity.Resume;
+import com.Aravind.demo.entity.JobSeeker;
+import com.Aravind.demo.entity.Applications;
+import com.Aravind.demo.entity.JobPosting;
+
 
 import java.util.List;
 
@@ -158,6 +162,9 @@ public interface JobSeekerDao {
      *         or during transaction management.
      */
     void submitApplication(Applications applications) throws DataServiceException;
+
+
+    boolean  hasUserApplied(Long jobId,Long userId) throws DataServiceException;
 
     /**
      * Retrieves a JobPosting by its ID from the database.

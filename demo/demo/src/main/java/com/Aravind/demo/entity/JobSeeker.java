@@ -1,6 +1,13 @@
 package com.Aravind.demo.entity;
 
-import jakarta.persistence.*;
+import jakarta.persistence.Id;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.Table;
+import jakarta.persistence.Entity;
+import jakarta.persistence.Column;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.PrePersist;
+
 import java.time.LocalDateTime;
 
 @Entity
@@ -23,6 +30,9 @@ public class JobSeeker {
     @Column(nullable = false)
     private String phone;
 
+    @Column(name = "profile_photo")
+    private String profilePhoto;
+
     @Column(nullable = false)
     private String workStatus;
 
@@ -32,20 +42,23 @@ public class JobSeeker {
     @Column(nullable = false, columnDefinition = "VARCHAR(255) DEFAULT 'jobseeker'")
     private String role;
 
-    // Default registrationTime without initializing in constructor
+
+
+
     @Column(nullable = false, updatable = false)
     private LocalDateTime registrationTime;
 
     public JobSeeker() {
         this.role = "jobseeker";
-        // No need to manually set registrationTime here
+
     }
 
-    public JobSeeker(String fullName, String email, String password, String phone, String workStatus, boolean promotions) {
+    public JobSeeker(String fullName, String email, String password,String profilePhoto, String phone, String workStatus, boolean promotions) {
         this.fullName = fullName;
         this.email = email;
         this.password = password;
         this.phone = phone;
+        this.profilePhoto = profilePhoto;
         this.workStatus = workStatus;
         this.promotions = promotions;
         this.role = "jobseeker";
@@ -100,6 +113,15 @@ public class JobSeeker {
 
     public void setPhone(String phone) {
         this.phone = phone;
+    }
+
+
+    public String getProfilePhoto() {
+        return profilePhoto;
+    }
+
+    public void setProfilePhoto(String profilePhoto) {
+        this.profilePhoto = profilePhoto;
     }
 
     public String getWorkStatus() {

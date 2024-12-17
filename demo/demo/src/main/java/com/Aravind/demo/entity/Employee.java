@@ -1,9 +1,14 @@
 package com.Aravind.demo.entity;
 
-import jakarta.persistence.*;
 import org.hibernate.annotations.CreationTimestamp;
 
 import java.time.LocalDateTime;
+import jakarta.persistence.Entity;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.Table;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.Column;
 
 @Entity
 @Table(name = "employee")
@@ -12,34 +17,37 @@ public class Employee {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    // Company-related fields
+
     private String companyName;
     private String websiteUrl;
     private String industryType;
 
-    // Recruiter-related fields
+
     private String fullName;
     private String email;
     private String mobileNumber;
+
+    @Column(name = "profile_photo")
+    private String profilePhoto;
     private String designation;
 
-    // Account Security
+
     private String password;
 
     @Column(nullable = false, columnDefinition = "VARCHAR(255) DEFAULT 'employee'")
     private String role;
 
-    // Timestamp to store the creation date/time (defaults to the current time)
+
     @CreationTimestamp
     @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;
 
-    // Default constructor
+
     public Employee() {
         this.role = "employee";
     }
 
-    // Constructor to initialize all fields
+
     public Employee(String companyName, String websiteUrl, String industryType,
                     String fullName, String officialEmail, String mobileNumber,
                     String designation, String password) {
@@ -54,7 +62,7 @@ public class Employee {
         this.role = "employee"; // Default role
     }
 
-    // Getters and setters for all fields
+
 
     public Long getId() {
         return id;
@@ -122,6 +130,13 @@ public class Employee {
 
     public String getPassword() {
         return password;
+    }
+    public String getProfilePhoto() {
+        return profilePhoto;
+    }
+
+    public void setProfilePhoto(String profilePhoto) {
+        this.profilePhoto = profilePhoto;
     }
 
     public void setPassword(String password) {
