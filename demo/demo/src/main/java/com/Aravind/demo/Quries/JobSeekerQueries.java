@@ -71,10 +71,6 @@ public class JobSeekerQueries {
             "r.projectDescription = :projectDescription, " +
             "r.certificateName = :certificateName, " +
             "r.certificateDescription = :certificateDescription, " +
-            "r.companyName = :companyName, " +
-            "r.startDate = :startDate, " +
-            "r.endDate = :endDate, " +
-            "r.jobTitle = :jobTitle, " +
-            "r.jobDescription = :jobDescription " +
+
             "WHERE r.id = :id";
 }

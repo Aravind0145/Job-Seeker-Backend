@@ -20,7 +20,6 @@ public class Employee {
 
     private String companyName;
     private String websiteUrl;
-    private String industryType;
 
 
     private String fullName;
@@ -53,7 +52,6 @@ public class Employee {
                     String designation, String password) {
         this.companyName = companyName;
         this.websiteUrl = websiteUrl;
-        this.industryType = industryType;
         this.fullName = fullName;
         this.email = email;
         this.mobileNumber = mobileNumber;
@@ -88,13 +86,6 @@ public class Employee {
         this.websiteUrl = websiteUrl;
     }
 
-    public String getIndustryType() {
-        return industryType;
-    }
-
-    public void setIndustryType(String industryType) {
-        this.industryType = industryType;
-    }
 
     public String getFullName() {
         return fullName;

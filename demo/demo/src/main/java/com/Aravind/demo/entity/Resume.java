@@ -92,20 +92,7 @@ public class Resume {
     @Column(nullable = false)
     private String certificateDescription;
 
-    @Column(nullable = false)
-    private String companyName;
 
-    @Column(nullable = false)
-    private String startDate;
-
-    @Column(nullable = false)
-    private String endDate;
-
-    @Column(nullable = false)
-    private String jobTitle;
-
-    @Column(nullable = false)
-    private String jobDescription;
 
     // Getters and Setters
     public Long getId() {
@@ -315,46 +302,6 @@ public class Resume {
 
     public void setCertificateDescription(String certificateDescription) {
         this.certificateDescription = certificateDescription;
-    }
-
-    public String getCompanyName() {
-        return companyName;
-    }
-
-    public void setCompanyName(String companyName) {
-        this.companyName = companyName;
-    }
-
-    public String getStartDate() {
-        return startDate;
-    }
-
-    public void setStartDate(String startDate) {
-        this.startDate = startDate;
-    }
-
-    public String getEndDate() {
-        return endDate;
-    }
-
-    public void setEndDate(String endDate) {
-        this.endDate = endDate;
-    }
-
-    public String getJobTitle() {
-        return jobTitle;
-    }
-
-    public void setJobTitle(String jobTitle) {
-        this.jobTitle = jobTitle;
-    }
-
-    public String getJobDescription() {
-        return jobDescription;
-    }
-
-    public void setJobDescription(String jobDescription) {
-        this.jobDescription = jobDescription;
     }
 
     public  void setSkills(String skills){

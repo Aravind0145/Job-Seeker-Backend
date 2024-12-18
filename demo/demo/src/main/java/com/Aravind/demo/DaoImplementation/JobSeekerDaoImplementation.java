@@ -809,11 +809,7 @@ public class JobSeekerDaoImplementation implements JobSeekerDao {
             query.setParameter("projectDescription", resume.getProjectDescription());
             query.setParameter("certificateName", resume.getCertificateName());
             query.setParameter("certificateDescription", resume.getCertificateDescription());
-            query.setParameter("companyName", resume.getCompanyName());
-            query.setParameter("startDate", resume.getStartDate());
-            query.setParameter("endDate", resume.getEndDate());
-            query.setParameter("jobTitle", resume.getJobTitle());
-            query.setParameter("jobDescription", resume.getJobDescription());
+
             query.setParameter("id", id);
 
 

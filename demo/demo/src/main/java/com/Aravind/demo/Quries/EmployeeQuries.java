@@ -25,7 +25,6 @@ public class EmployeeQuries {
           "UPDATE Employee e " +
                   "SET e.companyName = :companyName, " +
                   "e.websiteUrl = :websiteUrl, " +
-                  "e.industryType = :industryType, " +
                   "e.fullName = :fullName, " +
                   "e.email = :email, " +
                   "e.mobileNumber = :mobileNumber, " +

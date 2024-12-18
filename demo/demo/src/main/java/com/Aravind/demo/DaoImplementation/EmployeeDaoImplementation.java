@@ -355,7 +355,6 @@ public class EmployeeDaoImplementation implements EmployeeDao {
             Query query = session.createQuery(EmployeeQuries.UpdateEmployee);
             query.setParameter("companyName", updatedEmployee.getCompanyName());
             query.setParameter("websiteUrl", updatedEmployee.getWebsiteUrl());
-            query.setParameter("industryType", updatedEmployee.getIndustryType());
             query.setParameter("fullName", updatedEmployee.getFullName());
             query.setParameter("email", updatedEmployee.getOfficialEmail());
             query.setParameter("mobileNumber", updatedEmployee.getMobileNumber());
