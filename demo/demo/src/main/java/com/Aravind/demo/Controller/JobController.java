@@ -110,7 +110,7 @@ public class JobController {
     public ResponseEntity<Map<String, Object>> login(@RequestBody Map<String, String> loginRequest) throws BusinessServiceException {
         String email = loginRequest.get("email");
         String password = loginRequest.get("password");
-
+        System.out.println(password);
 
         Map<String, Object> response = jobService.login(email, password);
 
